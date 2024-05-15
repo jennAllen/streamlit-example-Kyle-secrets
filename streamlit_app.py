@@ -16,6 +16,7 @@ In the meantime, below is an example of what you can do with just a few lines of
 """
 
 st.text(os.environ)
+st.text(os.environ.get('KYLE', 'not found'))
 
 num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
 num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
