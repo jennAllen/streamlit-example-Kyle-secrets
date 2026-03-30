@@ -101,4 +101,4 @@ if 'movies_df' in st.session_state:
 
 else:
     st.info("👈 Please enter your Snowflake credentials in the sidebar and click Connect")
-~                                                                                                   # Query data
+    
