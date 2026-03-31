@@ -63,7 +63,7 @@ def init_connection():
 @st.cache_data(ttl=600)
 def load_movies():
     conn = init_connection()
-    query = "SELECT * FROM movies ORDER BY rating DESC"
+    query = "SELECT * FROM JENN_MOVIES ORDER BY rating DESC"
     df = pd.read_sql(query, conn)
     conn.close()
     return df
