@@ -109,5 +109,5 @@ if 'movies_df' in st.session_state:
     st.bar_chart(chart_data)
 
 else:
-    st.info("👈 Please enter your Snowflake credentials in the sidebar and click Connect"
+    st.info("👈 Please enter your Snowflake credentials in the sidebar and click Connect")
     
