@@ -20,22 +20,31 @@ def init_connection():
         warehouse = os.environ.get("SNOWFLAKE_WAREHOUSE", "DEFAULT_WH")
         database = os.environ.get("SNOWFLAKE_DATABASE", "JENN_MOVIES")
         schema = os.environ.get("SNOWFLAKE_SCHEMA", "PUBLIC")
-        integration_guid = os.environ.get("SNOWFLAKE_INTEGRATION_GUID")
-
-        # Check if integration GUID is set
-        if not integration_guid:
-            st.error("SNOWFLAKE_INTEGRATION_GUID environment variable is not set!")
-            st.info("You need to set the Integration GUID from your Snowflake OAuth integration in Posit Connect.")
-            st.stop()
 
         # Get OAuth access token using Posit Connect SDK
         client = connect.Client()
+
+        # Get current content and find Snowflake integration
+        current_content = client.content.get()
+        snowflake_integration = current_content.associations.find_by(
+            integration_type=types.OAuthIntegrationType.SNOWFLAKE
+        )
+
+        if not snowflake_integration:
+            st.error("No Snowflake OAuth integration found for this content!")
+            st.info("Make sure your content is associated with a Snowflake OAuth integration in Posit Connect.")
+            st.stop()
+
+        integration_guid = snowflake_integration.get("oauth_integration_guid")
+
+        # Get user session token
         user_session_token = st.context.headers.get("Posit-Connect-User-Session-Token")
 
         if not user_session_token:
             st.error("Unable to get user session token. Make sure you're running in Posit Connect.")
             st.stop()
 
+        # Get OAuth credentials
         credentials = client.oauth.get_credentials(
             user_session_token,
             audience=integration_guid
@@ -59,8 +68,8 @@ def init_connection():
         account = st.secrets["SNOWFLAKE_ACCOUNT"]
         user = st.secrets.get("SNOWFLAKE_USER")
         password = st.secrets.get("SNOWFLAKE_PASSWORD")
-        warehouse = st.secrets.get("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH")
-        database = st.secrets.get("SNOWFLAKE_DATABASE", "YOUR_DATABASE")
+        warehouse = st.secrets.get("SNOWFLAKE_WAREHOUSE", "DEFAULT_WH")
+        database = st.secrets.get("SNOWFLAKE_DATABASE", "JENN_MOVIES")
         schema = st.secrets.get("SNOWFLAKE_SCHEMA", "PUBLIC")
 
         return snowflake.connector.connect(
@@ -71,6 +80,7 @@ def init_connection():
             database=database,
             schema=schema,
         )
+
 
 # Query data
 @st.cache_data(ttl=600)
