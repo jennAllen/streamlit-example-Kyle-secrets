@@ -3,6 +3,7 @@ import snowflake.connector
 import pandas as pd
 import os
 from posit import connect
+from posit.connect.oauth import types
 
 # Page config
 st.set_page_config(page_title="Movie Database", page_icon="🎬")
