@@ -3,7 +3,6 @@ import snowflake.connector
 import pandas as pd
 import os
 from posit import connect
-from posit.connect.oauth import types
 
 # Page config
 st.set_page_config(page_title="Movie Database", page_icon="🎬")
@@ -22,58 +21,27 @@ def init_connection():
         database = os.environ.get("SNOWFLAKE_DATABASE", "JENN_MOVIES")
         schema = os.environ.get("SNOWFLAKE_SCHEMA", "PUBLIC")
 
-        # Get OAuth access token using Posit Connect SDK
-        client = connect.Client()
-
-        # Try to get integration GUID - first from env var, then auto-discover
-        integration_guid = os.environ.get("SNOWFLAKE_INTEGRATION_GUID")
-        
-        if not integration_guid:
-            # Auto-discover integration GUID from content associations
-            try:
-                current_content = client.content.get()
-                snowflake_integration = current_content.associations.find_by(
-                    integration_type=types.OAuthIntegrationType.SNOWFLAKE
-                )
-
-                if not snowflake_integration:
-                    st.error("No Snowflake OAuth integration found for this content!")
-                    st.info("Make sure your content is associated with a Snowflake OAuth integration in Posit Connect, or set SNOWFLAKE_INTEGRATION_GUID environment variable.")
-                    st.stop()
-
-                integration_guid = snowflake_integration.get("oauth_integration_guid")
-            except Exception as e:
-                st.error(f"Failed to auto-discover Snowflake integration: {e}")
-                st.info("Set the SNOWFLAKE_INTEGRATION_GUID environment variable manually, or ensure your content is properly deployed to Posit Connect with the CONNECT_CONTENT_GUID environment variable set.")
-                st.stop()
-            
         # Get user session token
         user_session_token = st.context.headers.get("Posit-Connect-User-Session-Token")
-        
+
         if not user_session_token:
             st.error("Unable to get user session token. Make sure you're running in Posit Connect.")
             st.stop()
-            
-        # Get OAuth credentials
-        credentials = client.oauth.get_credentials(
-            user_session_token,
-            audience=integration_guid
-        )   
-        access_token = credentials.get("access_token")
-            
-        if not access_token:
-            st.error("Failed to get OAuth access token from Posit Connect")
-            st.stop()
-        
+
+        # Get OAuth access token using Posit Connect SDK
+        client = connect.Client()
+        credentials = client.oauth.get_credentials(user_session_token)
+        access_token = credentials["access_token"]
+                
         return snowflake.connector.connect(
             account=account,
             token=access_token,
             authenticator="oauth",
-            warehouse=warehouse,
+            warehouse=warehouse, 
             database=database,
             schema=schema,
         )
-    else:   
+    else:       
         # Fall back to Streamlit secrets with username/password
         account = st.secrets["SNOWFLAKE_ACCOUNT"]
         user = st.secrets.get("SNOWFLAKE_USER")
@@ -81,7 +49,7 @@ def init_connection():
         warehouse = st.secrets.get("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH")
         database = st.secrets.get("SNOWFLAKE_DATABASE", "YOUR_DATABASE")
         schema = st.secrets.get("SNOWFLAKE_SCHEMA", "PUBLIC")
-
+        
         return snowflake.connector.connect(
             account=account,
             user=user,
@@ -89,27 +57,26 @@ def init_connection():
             warehouse=warehouse,
             database=database,
             schema=schema,
-        )
-
+        )   
 
 # Query data
 @st.cache_data(ttl=600)
 def load_movies():
     conn = init_connection()
-    query = "SELECT * FROM JENN_MOVIES ORDER BY rating DESC"
+    query = "SELECT * FROM movies ORDER BY rating DESC"
     df = pd.read_sql(query, conn)
     conn.close()
     return df
-
+            
 # Load the data
-try:
+try:        
     df = load_movies()
     st.session_state['movies_df'] = df
 except Exception as e:
     st.error(f"Failed to connect to Snowflake: {e}")
-    st.info("Make sure your credentials are configured:\n- Environment variables: SNOWFLAKE_ACCOUNT and SNOWFLAKE_INTEGRATION_GUID (uses OAuth via Posit Connect), OR\n- `.streamlit/secrets.toml` file with SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD")
+    st.info("Make sure your credentials are configured:\n- Environment variable: SNOWFLAKE_ACCOUNT (uses OAuth via Posit Connect - integration GUID auto-discovered), OR\n- `.streamlit/secrets.toml` file with SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD")
     st.stop()
-
+        
 # Display movies if data exists
 if 'movies_df' in st.session_state:
     df = st.session_state['movies_df']
@@ -144,4 +111,3 @@ if 'movies_df' in st.session_state:
 
 else:
     st.info("👈 Please enter your Snowflake credentials in the sidebar and click Connect")
-    
