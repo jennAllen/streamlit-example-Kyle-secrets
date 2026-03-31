@@ -69,17 +69,23 @@ def load_movies():
     return df
             
 # Load the data
-try:        
+try:
     df = load_movies()
     st.session_state['movies_df'] = df
 except Exception as e:
     st.error(f"Failed to connect to Snowflake: {e}")
     st.info("Make sure your credentials are configured:\n- Environment variable: SNOWFLAKE_ACCOUNT (uses OAuth via Posit Connect - integration GUID auto-discovered), OR\n- `.streamlit/secrets.toml` file with SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD")
     st.stop()
-        
+
 # Display movies if data exists
 if 'movies_df' in st.session_state:
     df = st.session_state['movies_df']
+
+    # Check if dataframe is empty
+    if len(df) == 0:
+        st.warning("No movies found in the database!")
+        st.info("Make sure you've run the CREATE TABLE and INSERT statements to add movie data to your Snowflake database.")
+        st.stop()
 
     st.subheader(f"Total Movies: {len(df)}")
 
