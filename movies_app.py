@@ -2,6 +2,7 @@ import streamlit as st
 import snowflake.connector
 import pandas as pd
 import os
+from posit import connect
 
 # Page config
 st.set_page_config(page_title="Movie Database", page_icon="🎬")
@@ -14,14 +15,22 @@ st.title("🎬 Movie Database")
 def init_connection():
     # Try to get credentials from environment variables first, then fall back to Streamlit secrets
     if "SNOWFLAKE_ACCOUNT" in os.environ:
-        # Use environment variables with token-based authentication
+        # Use environment variables with OAuth token authentication via Connect SDK
         account = os.environ["SNOWFLAKE_ACCOUNT"]
         warehouse = os.environ.get("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH")
-        database = os.environ.get("SNOWFLAKE_DATABASE", "DEMOS")
+        database = os.environ.get("SNOWFLAKE_DATABASE", "YOUR_DATABASE")
         schema = os.environ.get("SNOWFLAKE_SCHEMA", "PUBLIC")
+        integration_guid = os.environ.get("SNOWFLAKE_INTEGRATION_GUID")
 
-        # Get access token from session context (for OAuth authentication)
-        access_token = st.context.headers.get("Snowflake-Token")
+        # Get OAuth access token using Posit Connect SDK
+        client = connect.Client()
+        user_session_token = st.context.headers.get("Posit-Connect-User-Session-Token")
+
+        credentials = client.oauth.get_credentials(
+            user_session_token,
+            audience=integration_guid
+        )
+        access_token = credentials.get("access_token")
 
         return snowflake.connector.connect(
             account=account,
@@ -64,7 +73,7 @@ try:
     st.session_state['movies_df'] = df
 except Exception as e:
     st.error(f"Failed to connect to Snowflake: {e}")
-    st.info("Make sure your credentials are configured:\n- Environment variable: SNOWFLAKE_ACCOUNT (uses OAuth token authentication), OR\n- `.streamlit/secrets.toml` file with SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD")
+    st.info("Make sure your credentials are configured:\n- Environment variables: SNOWFLAKE_ACCOUNT and SNOWFLAKE_INTEGRATION_GUID (uses OAuth via Posit Connect), OR\n- `.streamlit/secrets.toml` file with SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD")
     st.stop()
 
 # Display movies if data exists
@@ -100,5 +109,5 @@ if 'movies_df' in st.session_state:
     st.bar_chart(chart_data)
 
 else:
-    st.info("👈 Please enter your Snowflake credentials in the sidebar and click Connect")
+    st.info("👈 Please enter your Snowflake credentials in the sidebar and click Connect"
     
