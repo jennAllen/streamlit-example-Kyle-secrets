@@ -22,15 +22,27 @@ def init_connection():
         schema = os.environ.get("SNOWFLAKE_SCHEMA", "PUBLIC")
         integration_guid = os.environ.get("SNOWFLAKE_INTEGRATION_GUID")
 
+        # Debug output
+        st.write(f"Debug - Account: {account}")
+        st.write(f"Debug - Integration GUID: {integration_guid}")
+        st.write(f"Debug - Warehouse: {warehouse}")
+        st.write(f"Debug - Database: {database}")
+
         # Get OAuth access token using Posit Connect SDK
         client = connect.Client()
         user_session_token = st.context.headers.get("Posit-Connect-User-Session-Token")
+
+        st.write(f"Debug - User session token exists: {user_session_token is not None}")
 
         credentials = client.oauth.get_credentials(
             user_session_token,
             audience=integration_guid
         )
         access_token = credentials.get("access_token")
+
+        st.write(f"Debug - Access token exists: {access_token is not None}")
+        if access_token:
+            st.write(f"Debug - Access token length: {len(access_token)}")
 
         return snowflake.connector.connect(
             account=account,
