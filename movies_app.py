@@ -25,37 +25,46 @@ def init_connection():
         # Get OAuth access token using Posit Connect SDK
         client = connect.Client()
 
-        # Get current content and find Snowflake integration
-        current_content = client.content.get()
-        snowflake_integration = current_content.associations.find_by(
-            integration_type=types.OAuthIntegrationType.SNOWFLAKE
-        )
+        # Try to get integration GUID - first from env var, then auto-discover
+        integration_guid = os.environ.get("SNOWFLAKE_INTEGRATION_GUID")
+        
+        if not integration_guid:
+            # Auto-discover integration GUID from content associations
+            try:
+                current_content = client.content.get()
+                snowflake_integration = current_content.associations.find_by(
+                    integration_type=types.OAuthIntegrationType.SNOWFLAKE
+                )
 
-        if not snowflake_integration:
-            st.error("No Snowflake OAuth integration found for this content!")
-            st.info("Make sure your content is associated with a Snowflake OAuth integration in Posit Connect.")
-            st.stop()
+                if not snowflake_integration:
+                    st.error("No Snowflake OAuth integration found for this content!")
+                    st.info("Make sure your content is associated with a Snowflake OAuth integration in Posit Connect, or set SNOWFLAKE_INTEGRATION_GUID environment variable.")
+                    st.stop()
 
-        integration_guid = snowflake_integration.get("oauth_integration_guid")
-
+                integration_guid = snowflake_integration.get("oauth_integration_guid")
+            except Exception as e:
+                st.error(f"Failed to auto-discover Snowflake integration: {e}")
+                st.info("Set the SNOWFLAKE_INTEGRATION_GUID environment variable manually, or ensure your content is properly deployed to Posit Connect with the CONNECT_CONTENT_GUID environment variable set.")
+                st.stop()
+            
         # Get user session token
         user_session_token = st.context.headers.get("Posit-Connect-User-Session-Token")
-
+        
         if not user_session_token:
             st.error("Unable to get user session token. Make sure you're running in Posit Connect.")
             st.stop()
-
+            
         # Get OAuth credentials
         credentials = client.oauth.get_credentials(
             user_session_token,
             audience=integration_guid
-        )
+        )   
         access_token = credentials.get("access_token")
-
+            
         if not access_token:
             st.error("Failed to get OAuth access token from Posit Connect")
             st.stop()
-
+        
         return snowflake.connector.connect(
             account=account,
             token=access_token,
@@ -64,13 +73,13 @@ def init_connection():
             database=database,
             schema=schema,
         )
-    else:
+    else:   
         # Fall back to Streamlit secrets with username/password
         account = st.secrets["SNOWFLAKE_ACCOUNT"]
         user = st.secrets.get("SNOWFLAKE_USER")
         password = st.secrets.get("SNOWFLAKE_PASSWORD")
-        warehouse = st.secrets.get("SNOWFLAKE_WAREHOUSE", "DEFAULT_WH")
-        database = st.secrets.get("SNOWFLAKE_DATABASE", "JENN_MOVIES")
+        warehouse = st.secrets.get("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH")
+        database = st.secrets.get("SNOWFLAKE_DATABASE", "YOUR_DATABASE")
         schema = st.secrets.get("SNOWFLAKE_SCHEMA", "PUBLIC")
 
         return snowflake.connector.connect(
