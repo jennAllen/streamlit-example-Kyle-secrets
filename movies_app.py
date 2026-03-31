@@ -18,7 +18,7 @@ def init_connection():
         # Use environment variables with OAuth token authentication via Connect SDK
         account = os.environ["SNOWFLAKE_ACCOUNT"]
         warehouse = os.environ.get("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH")
-        database = os.environ.get("SNOWFLAKE_DATABASE", "YOUR_DATABASE")
+        database = os.environ.get("SNOWFLAKE_DATABASE", "JENN_MOVIES")
         schema = os.environ.get("SNOWFLAKE_SCHEMA", "PUBLIC")
         integration_guid = os.environ.get("SNOWFLAKE_INTEGRATION_GUID")
 
